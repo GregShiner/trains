@@ -1,18 +1,9 @@
 from __future__ import annotations
-from typing import List, NamedTuple, TypedDict, Dict, TypeAlias
+from typing import List, NamedTuple
 
 NodeId = str
 LineId = str
-
-
-class NodeDict(TypedDict):
-    node_id: NodeId
-    node: Node
-
-
-class LineDict(TypedDict):
-    line_id: LineId
-    line: List[NodeId]
+Line = List[NodeId]
 
 
 class Connection(NamedTuple):
@@ -40,4 +31,5 @@ class Node:
 
     def route_to(self, other: Node) -> List[Connection]:
         """Returns a list of connections that will take you from this node to the other node"""
+        # TODO: implement this
         pass

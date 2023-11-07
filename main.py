@@ -1,7 +1,8 @@
-from node import Node, Connection, NodeDict, LineDict
+from typing import Dict, List
+from node import Node, Connection, NodeId, LineId, Line
 import tkinter as tk
 
-NODE_DICT: NodeDict = {
+NODE_DICT: Dict[NodeId, Node] = {
     'A': Node('A', [Connection('B', 'red'), 
                 Connection('B', 'blue'),
                 Connection('C', 'green'),
@@ -18,7 +19,7 @@ NODE_DICT: NodeDict = {
     'F': Node('F', [Connection('A', 'blue'),]),
 }
 
-LINE_DICT: LineDict = {
+LINE_DICT: Dict[LineId, Line] = {
     'red': ['D', 'A', 'B',],
     'blue': ['F', 'A', 'B'],
     'green': ['E', 'A', 'C', 'B'],
