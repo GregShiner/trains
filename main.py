@@ -1,6 +1,6 @@
-from node import Node, Connection
+from node import Node, Connection, NodeDict, LineDict
 
-NODE_DICT = {
+NODE_DICT: NodeDict = {
     'A': Node('A', [Connection('B', 'red'), 
                 Connection('B', 'blue'),
                 Connection('C', 'green'),
@@ -17,7 +17,7 @@ NODE_DICT = {
     'F': Node('F', [Connection('A', 'blue'),]),
 }
 
-LINE_DICT = {
+LINE_DICT: LineDict = {
     'red': ['D', 'A', 'B',],
     'blue': ['F', 'A', 'B'],
     'green': ['E', 'A', 'C', 'B'],

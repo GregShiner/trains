@@ -4,6 +4,14 @@ from typing import List, NamedTuple, TypedDict, Dict, TypeAlias
 NodeId = str
 LineId = str
 
+class NodeDict(TypedDict):
+    node_id: NodeId
+    node: Node
+
+class LineDict(TypedDict):
+    line_id: LineId
+    line: List[NodeId]
+
 class Connection(NamedTuple):
     node_id: str # node name of the connected node
     line_id: str # line name of the connection
