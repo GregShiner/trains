@@ -24,5 +24,6 @@ LINE_DICT: LineDict = {
     'green': ['E', 'A', 'C', 'B'],
 }
 
+
 def get_node(node_name: str) -> Node:
     return NODE_DICT[node_name]
