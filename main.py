@@ -1,4 +1,5 @@
 from node import Node, Connection, NodeDict, LineDict
+import tkinter as tk
 
 NODE_DICT: NodeDict = {
     'A': Node('A', [Connection('B', 'red'), 
