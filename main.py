@@ -1,6 +1,8 @@
 from typing import Dict, List
-from node import Node, Connection, NodeId, LineId, Line
-import tkinter as tk
+from node import Node, Connection, NodeId, LineId, Line, Network
+from networkx import draw
+from matplotlib import pyplot as plt
+from timeit import timeit
 
 NODE_DICT: Dict[NodeId, Node] = {
     'A': Node('A', [Connection('B', 'red'), 
@@ -25,6 +27,16 @@ LINE_DICT: Dict[LineId, Line] = {
     'green': ['E', 'A', 'C', 'B'],
 }
 
+network = Network(NODE_DICT)
+for node in network.nodes:
+    print(node)
+    for connection in NODE_DICT[node].connections:
+        print(f'\t{connection.node_id} on line {connection.line_id}')
 
-def get_node(node_name: str) -> Node:
-    return NODE_DICT[node_name]
+for edge in network.edges:
+    print(edge)
+
+#draw(network, with_labels=True)
+#plt.show()
+
+print(network.route_to('F', 'C'))
