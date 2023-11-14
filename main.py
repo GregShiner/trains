@@ -3,6 +3,7 @@ from node import Node, Connection, NodeId, LineId, Line, Network
 from networkx import draw
 from matplotlib import pyplot as plt
 from timeit import timeit
+from parser import loadJson, lineDictToNodeDict
 
 NODE_DICT: Dict[NodeId, Node] = {
     'A': Node('A', [Connection('B', 'red'), 

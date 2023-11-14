@@ -47,6 +47,9 @@ class Node:
 
     def get_connected_lines(self) -> List[LineId]:
         return [c.line_id for c in self.connections]
+    
+    def __repr__(self):
+        return f'Node {self.node_id} with connections {self.connections}'
 
 
 class _Network:
