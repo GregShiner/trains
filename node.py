@@ -15,6 +15,7 @@ class Connection(NamedTuple):
     line_id: str  # line name of the connection
     distance: float = 1  # distance between the nodes
 
+
 class Transfer(NamedTuple):
     """
     A transfer represents a connection between two lines that a user must take to get from one line to another.
@@ -23,6 +24,7 @@ class Transfer(NamedTuple):
     from_line: LineId
     to_line: LineId
 
+
 class Path(NamedTuple):
     """
     A path represents a route from one node to another, including the cost of the path and the transfers that must be made.
@@ -30,6 +32,7 @@ class Path(NamedTuple):
     path: List[Connection]
     cost: float
     transfers: List[Transfer]
+
 
 class Node:
     node_id: str  # node name
@@ -52,65 +55,50 @@ class Node:
         return f'Node {self.node_id} with connections {self.connections}'
 
 
-class _Network:
-    def __init__(self, node_dict: Dict[NodeId, Node], line_dict: Dict[LineId, Line]):
-        self.node_dict = node_dict
-        self.line_dict = line_dict
-
-    def route_to(self, start: NodeId, other: NodeId) -> Path:
-        """
-        Returns a path of connections that will take you from this node to the other node
-        Algorithm:
-        1. Find every non-cyclic path from this node to the other node (ignoring lines/transfers) using a greedy algorithm
-        2. For each path, find the minimum number of transfers
-        3. Return the path with the minimum number of transfers (if there are multiple, return the one with the minimum distance)
-        """
-        # TODO: implement this
-        pass
-
-    def _get_all_raw_paths(self, start: NodeId, other: NodeId, path_stack: List[NodeId]=[], paths: List[List[NodeId]]=[]) -> List[List[NodeId]]:
-        """
-        Returns a list of all possible paths from start to other, ignoring lines/transfers
-        """
-        if path_stack == []:
-            path_stack = [start]
-        for next_node in self.node_dict[start].get_connected_nodes():
-            if next_node == other:
-                paths.append(path_stack.copy())
-            elif next_node not in path_stack:
-                path_stack.append(next_node)
-                paths.extend(self._get_all_raw_paths(next_node, other, path_stack, paths))
-                path_stack.pop()
-        return paths
-
 class Network(MultiGraph):
     node_dict: Dict[NodeId, Node]
+
+
     def __init__(self, node_dict: Dict[NodeId, Node]):
+        # Call the MultiGraph constructor
         super().__init__()
         self.node_dict = node_dict
+        # Add the nodes to the MultiGraph
         for node in self.node_dict:
             self.add_node(node, node=self.node_dict[node])
+        # Add the edges to the MultiGraph
         for node_id, node in self.node_dict.items():
             for connection in node.connections:
                 self.add_edge(node_id, connection.node_id, key=connection.line_id, connection=connection)
     
+
     def route_to(self, start: NodeId, other: NodeId) -> Path:
         """
         Returns a path of connections that will take you from this node to the other node
         Algorithm:
         1. Find every non-cyclic path from this node to the other node (ignoring lines/transfers) using a greedy algorithm
-        2. For each path, find the minimum number of transfers
-        3. Return the path with the minimum number of transfers (if there are multiple, return the one with the minimum distance)
+        2. For each path, find the sequence tree of all of the possible connections and lines
+        3. For each sequence tree, find all of the possible paths
+        4. Return the path with the minimum number of transfers (if there are multiple, return the one with the minimum distance)
         """
-        # TODO: implement this
+        # Step 1: Get all of the raw paths
         raw_paths = self._get_all_raw_paths(start, other)
+
+        # Step 2: Find the sequence trees
+        # Get the sequence trees
         trees = []
+        # For each raw path
         for raw_path in raw_paths:
-            sequence_tree = self._get_sequence_tree(raw_path)
-            trees.append(sequence_tree)
+            # Get the sequence tree
+            trees.append(self._get_sequence_tree(raw_path))
+
+        # Step 3: Convert the sequence trees to paths
+        # Get the paths from the sequence trees
         paths: List[List[Connection]] = []
         for tree in trees:
             paths.extend(self._sequence_tree_to_paths(tree))
+        
+        # Find the path with the minimum number of transfers (if there are multiple, return the one with the minimum distance)
         min_transfers = float('inf')
         min_distance = float('inf')
         min_path: List[Connection] | None = None
@@ -133,6 +121,7 @@ class Network(MultiGraph):
                     min_distance = distance
         return Path(min_path, min_distance, self._transfers(min_path))
     
+
     def _get_sequence_tree(self, raw_path: List[NodeId], tree: Dict[Connection, dict] | None = None) -> Dict[Connection, dict]: # {Connection: {Connection: {Connection: ...}}}
         """
         The raw path is a list of node IDs that represents a path from one node to another.
@@ -140,8 +129,11 @@ class Network(MultiGraph):
         This function returns a tree of all of the possible connections and lines for the path.
         The tree is built recursively using a tree traversal.
         """
+        # Sets the tree to an empty dict on initial call
         if tree is None:
             tree = {}
+        
+        # if the path is empty, return the tree (base case)
         if len(raw_path) == 1:
             return tree
         # for each connection in the first node
@@ -154,36 +146,49 @@ class Network(MultiGraph):
                 self._get_sequence_tree(raw_path[1:], tree[connection])
         return tree
     
+
     def _sequence_tree_to_paths(self, sequence_tree: Dict[Connection, dict], path: List[Connection] = [], paths: List[List[Connection]] = []) -> List[List[Connection]]:
         """
         This function takes a sequence tree and returns a list of paths.
         """
+        # if the sequence tree is empty, return the paths (base case)
         if len(sequence_tree) == 0:
             paths.append(path.copy())
             return paths
+        # for each connection in the sequence tree
         for connection in sequence_tree:
+            # add the connection to the path
             path.append(connection)
+            # recursively call this function with the rest of the sequence tree
             self._sequence_tree_to_paths(sequence_tree[connection], path, paths)
+            # remove the connection from the path
             path.pop()
         return paths
+
 
     def _transfers(self, path: List[Connection]) -> List[Transfer]:
         """
         Returns a list of transfers that must be made to follow this path.
         """
         transfers = []
+        # for each connection in the path
         for i in range(len(path) - 1):
+            # if the line ID of the current connection is not the same as the line ID of the next connection
             if path[i].line_id != path[i + 1].line_id:
+                # add a transfer to the list of transfers
                 transfers.append(Transfer(path[i].node_id, path[i].line_id, path[i + 1].line_id))
         return transfers
     
+
     def _get_all_raw_paths(self, start: NodeId, end: NodeId, visited: Dict[NodeId, bool] | None = None, paths: Set[List[NodeId]] | None = None, path: List[NodeId] = []) -> List[List[NodeId]]:
         """
         Returns a list of all possible paths from start to end, ignoring lines/transfers
         """
+        # Mark all the vertices as not visited on initial call
         if visited is None:
             visited = {node_id: False for node_id in self.node_dict}
-
+        
+        # Initialize paths on initial call
         if paths is None:
             paths = set()
     
