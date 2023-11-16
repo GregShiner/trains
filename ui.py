@@ -43,7 +43,7 @@ def display_path(user_origin, created_path):
 
         if i == 0:
 
-            print(f'\nOrigin Station: {user_origin}')
+            print(f'\nOrigin Station: {user_origin} | Line: {node.line_id}')
 
         if i == 0 and len(created_path.path) > 1:
 
