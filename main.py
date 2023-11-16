@@ -21,7 +21,7 @@ NODE_DICT: Dict[NodeId, Node] = {
 }
 
 LINE_DICT: Dict[LineId, Line] = {
-    'red': ['D', 'A', 'B',],
+    'red': ['D', 'A', 'B'],
     'blue': ['F', 'A', 'B'],
     'green': ['E', 'A', 'C', 'B'],
 }
@@ -43,7 +43,5 @@ user_stations = ui.prompt_for_stations()
 # example is from F to C
 
 user_path = network.route_to(user_stations[0], user_stations[1])
-
-print(user_path)
 
 ui.display_path(user_stations[0], user_path)
