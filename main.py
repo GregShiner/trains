@@ -1,9 +1,6 @@
-from typing import Dict, List
+from typing import Dict
 from node import Node, Connection, NodeId, LineId, Line, Network
-from networkx import draw
-from matplotlib import pyplot as plt
-from timeit import timeit
-from parser import loadJson, lineDictToNodeDict
+from parser import load_json, line_dict_to_node_dict
 
 NODE_DICT: Dict[NodeId, Node] = {
     'A': Node('A', [Connection('B', 'red'), 

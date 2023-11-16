@@ -1,7 +1,7 @@
-from parser import loadJson, lineDictToNodeDict
+from parser import load_json, line_dict_to_node_dict
 
-LIST_DICT = loadJson("data.json")
+LIST_DICT = load_json("data.json")
 
-NODE_DICT = lineDictToNodeDict(LIST_DICT)
+NODE_DICT = line_dict_to_node_dict(LIST_DICT)
 
 print(NODE_DICT)
