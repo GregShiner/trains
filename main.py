@@ -1,6 +1,7 @@
 from typing import Dict
 from node import Node, Connection, NodeId, LineId, Line, Network
 from parser import load_json, line_dict_to_node_dict
+import ui
 
 NODE_DICT: Dict[NodeId, Node] = {
     'A': Node('A', [Connection('B', 'red'), 
@@ -37,4 +38,12 @@ for edge in network.edges:
 #draw(network, with_labels=True)
 #plt.show()
 
-print(network.route_to('F', 'C'))
+user_stations = ui.prompt_for_stations()
+
+# example is from F to C
+
+user_path = network.route_to(user_stations[0], user_stations[1])
+
+print(user_path)
+
+ui.display_path(user_stations[0], user_path)
