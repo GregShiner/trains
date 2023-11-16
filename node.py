@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import Dict, List, NamedTuple, Set
 from networkx import MultiGraph
+import json
 
 NodeId = str
 LineId = str
@@ -38,18 +39,23 @@ class Node:
     node_id: str  # node name
     connections: List[Connection]  # list of connections
 
+
     def __init__(self, node_id: NodeId, connections: List[Connection] = []):
         self.node_id = node_id
         self.connections = connections
 
+
     def get_nodes_on_line(self, line_id: LineId) -> List[NodeId]:
         return [c.node_id for c in self.connections if c.line_id == line_id]
+
 
     def get_connected_nodes(self) -> List[NodeId]:
         return list(set([c.node_id for c in self.connections]))
 
+
     def get_connected_lines(self) -> List[LineId]:
         return [c.line_id for c in self.connections]
+    
     
     def __repr__(self):
         return f'Node {self.node_id} with connections {self.connections}'
@@ -58,7 +64,7 @@ class Node:
 class Network(MultiGraph):
     node_dict: Dict[NodeId, Node]
 
-
+    
     def __init__(self, node_dict: Dict[NodeId, Node]):
         # Call the MultiGraph constructor
         super().__init__()
@@ -210,3 +216,38 @@ class Network(MultiGraph):
         path.pop()
         visited[start] = False
         return paths
+    
+    @staticmethod
+    def from_line_file(file_name: str) -> Network:
+        """
+        Returns a Network object from a line file.
+        """
+        with open(file_name, 'r') as f:
+            line_dict: Dict[LineId,Line] = json.load(f)
+        return Network.from_line_dict(line_dict)
+    
+    @staticmethod
+    def from_line_dict(line_dict: Dict[LineId,Line]) -> Network:
+        """
+        Returns a Network object from a line dictionary.
+        """
+        node_dict: Dict[NodeId, Node] = {}
+        nodes = set()
+        line_ids = line_dict.keys()
+        lines = line_dict.values()
+        for line in lines:
+            nodes.update(line)
+        for node in nodes:
+            connection_list = []
+            for line_id in line_ids:
+                for i in range(len(line_dict[line_id])):
+                    if line_dict[line_id][i] == node:
+                        if i == 0:
+                            connection_list.append(Connection(line_dict[line_id][i+1], line_id))
+                        elif i == len(line_dict[line_id])-1:
+                            connection_list.append(Connection(line_dict[line_id][i-1], line_id))
+                        else:
+                            connection_list.append(Connection(line_dict[line_id][i-1], line_id))
+                            connection_list.append(Connection(line_dict[line_id][i+1], line_id))
+            node_dict[node] = Node(node, connection_list)
+        return Network(node_dict)

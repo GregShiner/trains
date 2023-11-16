@@ -1,7 +1,5 @@
-from parser import load_json, line_dict_to_node_dict
+from node import Network
 
-LIST_DICT = load_json("data.json")
+network = Network.from_line_file('data.json')
 
-NODE_DICT = line_dict_to_node_dict(LIST_DICT)
-
-print(NODE_DICT)
+print(network)
