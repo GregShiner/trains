@@ -102,7 +102,10 @@ class Network(MultiGraph):
         # Get the paths from the sequence trees
         paths: List[List[Connection]] = []
         for tree in trees:
-            paths.extend(self._sequence_tree_to_paths(tree))
+            paths.extend(self._sequence_tree_to_paths(other, tree))
+
+        for path in paths:
+            print(path)
         
         # Find the path with the minimum number of transfers (if there are multiple, return the one with the minimum distance)
         min_transfers = float('inf')
@@ -128,45 +131,53 @@ class Network(MultiGraph):
         return Path(min_path, min_distance, self._transfers(min_path))
     
 
-    def _get_sequence_tree(self, raw_path: List[NodeId], tree: Dict[Connection, dict] | None = None) -> Dict[Connection, dict]: # {Connection: {Connection: {Connection: ...}}}
+    def _get_sequence_tree(self, raw_path: List[NodeId], tree: Dict[Connection, dict] | None = None, linesVisited: Set[LineId] = set(), currentLine: LineId|None = None) -> Dict[Connection, dict]: # {Connection: {Connection: {Connection: ...}}}
         """
         The raw path is a list of node IDs that represents a path from one node to another.
         It ignores lines and transfers.
         This function returns a tree of all of the possible connections and lines for the path.
         The tree is built recursively using a tree traversal.
         """
+        # God I hate python so much (why are sets passed by reference but dicts aren't)
+        linesVisitedCopy = linesVisited.copy()
         # Sets the tree to an empty dict on initial call
         if tree is None:
             tree = {}
+            '''linesVisited = set()
+            currentLine = None'''
         
         # if the path is empty, return the tree (base case)
         if len(raw_path) == 1:
             return tree
         # for each connection in the first node
         for connection in self.node_dict[raw_path[0]].connections:
-            # if the connection is to the next node in the path
-            if connection.node_id == raw_path[1]:
+            # if the connection is to the next node in the path and is not transferring to a previously used line
+            if connection.node_id == raw_path[1] and (currentLine == None or connection.line_id == currentLine or connection.line_id not in linesVisitedCopy):
+                # add the line to the set of lines visited
+                linesVisitedCopy.add(connection.line_id)
                 # add the connection to the tree
                 tree[connection] = {}
                 # recursively call this function with the rest of the path
-                self._get_sequence_tree(raw_path[1:], tree[connection])
+                self._get_sequence_tree(raw_path[1:], tree[connection], linesVisitedCopy, connection.line_id)
+                linesVisitedCopy = linesVisited.copy()
         return tree
     
 
-    def _sequence_tree_to_paths(self, sequence_tree: Dict[Connection, dict], path: List[Connection] = [], paths: List[List[Connection]] = []) -> List[List[Connection]]:
+    def _sequence_tree_to_paths(self, destination_id: NodeId, sequence_tree: Dict[Connection, dict], path: List[Connection] = [], paths: List[List[Connection]] = []) -> List[List[Connection]]:
         """
         This function takes a sequence tree and returns a list of paths.
         """
         # if the sequence tree is empty, return the paths (base case)
         if len(sequence_tree) == 0:
-            paths.append(path.copy())
+            if path[-1].node_id == destination_id:
+                paths.append(path.copy())
             return paths
         # for each connection in the sequence tree
         for connection in sequence_tree:
             # add the connection to the path
             path.append(connection)
             # recursively call this function with the rest of the sequence tree
-            self._sequence_tree_to_paths(sequence_tree[connection], path, paths)
+            self._sequence_tree_to_paths(destination_id, sequence_tree[connection], path, paths)
             # remove the connection from the path
             path.pop()
         return paths
