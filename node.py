@@ -1,5 +1,7 @@
 from __future__ import annotations
-from typing import Dict, List, NamedTuple, Set
+from dataclasses import dataclass
+from sys import maxsize
+from typing import Dict, List, NamedTuple, Set, Tuple
 from networkx import MultiGraph
 import json
 
@@ -25,14 +27,69 @@ class Transfer(NamedTuple):
     from_line: LineId
     to_line: LineId
 
-
-class Path(NamedTuple):
+@dataclass(eq=False)
+class Path:
     """
     A path represents a route from one node to another, including the cost of the path and the transfers that must be made.
     """
     path: List[Connection]
-    cost: float
+    distance: float
+    num_stations: int
+    num_transfers: int
     transfers: List[Transfer]
+
+    """
+    Comparisons for Path objects
+    A path is less than another path if it has fewer transfers
+    A path is greater than another path if it has more transfers
+    If the paths have the same number of transfers, the path with the shorter distance is less than the other path
+    """ 
+    def __lt__(self, __value: Path) -> bool:
+        if self.num_transfers < __value.num_transfers:
+            return True
+        elif self.num_transfers > __value.num_transfers:
+            return False
+        else:
+            return self.distance < __value.distance
+    
+    def __eq__(self, __value: Path) -> bool:
+        return self.num_transfers == __value.num_transfers and self.distance == __value.distance
+    
+    def append(self, value: Connection) -> None:
+        """
+        Appends a connection to the path.
+        Automatically updates the distance and transfers.
+        """
+        self.path.append(value)
+        self.distance += value.distance
+        self.num_stations += 1
+        if len(self.path) >= 2 and value.line_id != self.path[-2].line_id:
+            self.transfers.append(Transfer(self.path[-2].node_id, self.path[-2].line_id, value.line_id))
+            self.num_transfers += 1
+
+    def pop(self) -> Connection:
+        """
+        Removes the last connection from the path.
+        Automatically updates the distance and transfers.
+        """
+        self.distance -= self.path[-1].distance
+        self.num_stations -= 1
+        if len(self.path) >= 2 and self.path[-1].line_id != self.path[-2].line_id:
+            self.transfers.pop()
+            self.num_transfers -= 1
+        return self.path.pop()
+    
+    def set_self(self, value: Path) -> None:
+        """
+        Sets this path to the value of another path.
+        Note: This is an absolutely horrible abuse of sharing memory.
+        """
+        self.path = value.path.copy()
+        self.distance = value.distance
+        self.num_stations = value.num_stations
+        self.num_transfers = value.num_transfers
+        self.transfers = value.transfers.copy()
+
 
 
 class Node:
@@ -84,61 +141,70 @@ class Network(MultiGraph):
         Algorithm:
         1. Find every non-cyclic path from this node to the other node (ignoring lines/transfers) using a greedy algorithm
         2. For each path, find the sequence tree of all of the possible connections and lines
-        3. For each sequence tree, find all of the possible paths
-        4. Return the path with the minimum number of transfers (if there are multiple, return the one with the minimum distance)
+        3. For each sequence tree, find the best path
+            a. Stop traversing the tree if the path is longer than the best path
+            b. Share the current best path between all of the trees
         """
         # Step 1: Get all of the raw paths
         raw_paths = self._get_all_raw_paths(start, other)
 
+        # Sort the raw paths by length
+        # This should make step 3 find more min paths faster
+        raw_paths_sorted = sorted(raw_paths, key=lambda path: len(path))
+        """
         # Step 2: Find the sequence trees
         # Get the sequence trees
         trees = []
         # For each raw path
-        for raw_path in raw_paths:
+        for raw_path in raw_paths_sorted:
             # Get the sequence tree
             trees.append(self._get_sequence_tree(raw_path))
+        """
+        min_path = Path([], float('inf'), 0, maxsize, [])
+        # Step 2-3: For each sequence tree, find the best path
+        for raw_path in raw_paths_sorted:
+            tree = self._get_sequence_tree(raw_path)
+            self._get_best_path(other, tree, min_path)
+        return min_path
 
-        # Step 3: Convert the sequence trees to paths
-        # Get the paths from the sequence trees
-        paths: List[List[Connection]] = []
-        for tree in trees:
-            paths.extend(self._sequence_tree_to_paths(other, tree))
+    def _get_best_path(self, destination_id: NodeId, tree: Dict[Connection, dict], min_path: Path, path: Path | None = None) -> None:
+        """
+        This function takes a sequence tree and returns the best path.
+        Algorithm:
+        1. Recurse through the tree, keeping track of the current path, the number of transfers, and the distance
+            a. If the current path has more transfers than the minimum path, stop traversing the tree
+            b. If the current path has the same transfers as the min path, but is longer, stop traversing the tree
+            c. Else, continue traversing the tree
+        2. At the end of the tree, if the current path is better than the min path, set the min path to the current path
+        """
+        # Initialize the path on initial call
+        if not path:
+            path = Path([], 0, 0, 0, [])
+        # If the tree is empty, if the path is better than the min path, set the min path to the path and return it
+        if len(tree) == 0:
+            if (path.path[-1].node_id == destination_id) and (path < min_path):
+                min_path.set_self(path)
+            return
 
-        for path in paths:
-            print(path)
-        
-        # Find the path with the minimum number of transfers (if there are multiple, return the one with the minimum distance)
-        min_transfers = float('inf')
-        min_distance = float('inf')
-        min_path: List[Connection] | None = None
-        for path in paths:
-            # get the transfers
-            transfers = self._transfers(path)
-            # get the distance
-            distance = sum([connection.distance for connection in path])
-            # if the number of transfers is less than the minimum number of transfers
-            if len(transfers) < min_transfers:
-                min_path = path
-                min_transfers = len(transfers)
-                min_distance = distance
-            # if the number of transfers is equal to the minimum number of transfers
-            elif len(transfers) == min_transfers:
-                # if the distance is less than the minimum distance
-                if distance < min_distance:
-                    min_path = path
-                    min_transfers = len(transfers)
-                    min_distance = distance
-        return Path(min_path, min_distance, self._transfers(min_path))
-    
+        # For each connection in the tree
+        for connection in tree:
+            # Add the connection to the path
+            path.append(connection)
+            # Recursively call this function with the rest of the tree
+            if path < min_path:
+                self._get_best_path(destination_id, tree[connection], min_path, path)
+            # Remove the connection from the path
+            path.pop()
 
-    def _get_sequence_tree(self, raw_path: List[NodeId], tree: Dict[Connection, dict] | None = None, linesVisited: Set[LineId] = set(), currentLine: LineId|None = None) -> Dict[Connection, dict]: # {Connection: {Connection: {Connection: ...}}}
+
+    def _get_sequence_tree(self, raw_path: Tuple[NodeId], tree: Dict[Connection, dict] | None = None, linesVisited: Set[LineId] = set(), currentLine: LineId|None = None) -> Dict[Connection, dict]: # {Connection: {Connection: {Connection: ...}}}
         """
         The raw path is a list of node IDs that represents a path from one node to another.
         It ignores lines and transfers.
         This function returns a tree of all of the possible connections and lines for the path.
         The tree is built recursively using a tree traversal.
         """
-        # God I hate python so much (why are sets passed by reference but dicts aren't)
+        # God I hate python so much
         linesVisitedCopy = linesVisited.copy()
         # Sets the tree to an empty dict on initial call
         if tree is None:
@@ -197,7 +263,7 @@ class Network(MultiGraph):
         return transfers
     
 
-    def _get_all_raw_paths(self, start: NodeId, end: NodeId, visited: Dict[NodeId, bool] | None = None, paths: Set[List[NodeId]] | None = None, path: List[NodeId] = []) -> List[List[NodeId]]:
+    def _get_all_raw_paths(self, start: NodeId, end: NodeId, visited: Dict[NodeId, bool] | None = None, paths: Set[Tuple[NodeId]] | None = None, path: List[NodeId] = []) -> Set[Tuple[NodeId]]:
         """
         Returns a list of all possible paths from start to end, ignoring lines/transfers
         """
@@ -221,7 +287,7 @@ class Network(MultiGraph):
             # Recur for all the vertices adjacent to this vertex
             for node in self.node_dict[start].get_connected_nodes():
                 if visited[node] == False:
-                    paths.update(tuple(self._get_all_raw_paths(node, end, visited, paths, path)))
+                    self._get_all_raw_paths(node, end, visited, paths, path)
 
         # Remove current vertex from path[] and mark it as unvisited
         path.pop()
