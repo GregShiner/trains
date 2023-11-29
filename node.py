@@ -281,7 +281,7 @@ class Network(MultiGraph):
  
         # If current vertex is same as destination, then add path
         if start == end:
-            paths.add(tuple(path))
+            paths.add(tuple(path)) # type: ignore
         else:
             # If current vertex is not destination
             # Recur for all the vertices adjacent to this vertex
