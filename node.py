@@ -116,7 +116,7 @@ class Node:
     
     def __repr__(self):
         return f'Node {self.node_id} with connections {self.connections}'
-
+    
 
 class Network(MultiGraph):
     node_dict: Dict[NodeId, Node]
@@ -146,7 +146,7 @@ class Network(MultiGraph):
             b. Share the current best path between all of the trees
         """
         # Step 1: Get all of the raw paths
-        raw_paths = self._get_all_raw_paths(start, other)
+        raw_paths = self._get_all_raw_paths(start, other, self.find_needed_lines(start, other))
 
         # Sort the raw paths by length
         # This should make step 3 find more min paths faster
@@ -263,11 +263,11 @@ class Network(MultiGraph):
         return transfers
     
 
-    def _get_all_raw_paths(self, start: NodeId, end: NodeId, visited: Dict[NodeId, bool] | None = None, paths: Set[Tuple[NodeId]] | None = None, path: List[NodeId] = []) -> Set[Tuple[NodeId]]:
+    def _get_all_raw_paths(self, start: NodeId, end: NodeId, needed: Set[LineId], visited: Dict[NodeId, bool] | None = None, paths: Set[Tuple[NodeId]] | None = None, path: List[NodeId] = []) -> Set[Tuple[NodeId]]:
         """
         Returns a list of all possible paths from start to end, ignoring lines/transfers
         """
-        # Mark all the vertices as not visited on initial call
+        # Mark all the vertices as not visited and determine unneeded lines on initial call 
         if visited is None:
             visited = {node_id: False for node_id in self.node_dict}
         
@@ -286,8 +286,15 @@ class Network(MultiGraph):
             # If current vertex is not destination
             # Recur for all the vertices adjacent to this vertex
             for node in self.node_dict[start].get_connected_nodes():
+                counter = 0
+                for connection in self.node_dict[start].connections:
+                    if connection.line_id in needed:
+                        break
+                    counter += 1
+                if counter == len(self.node_dict[start].connections):
+                    continue
                 if visited[node] == False:
-                    self._get_all_raw_paths(node, end, visited, paths, path)
+                    self._get_all_raw_paths(node, end, needed, visited, paths, path)
 
         # Remove current vertex from path[] and mark it as unvisited
         path.pop()
@@ -328,3 +335,72 @@ class Network(MultiGraph):
                             connection_list.append(Connection(line_dict[line_id][i+1], line_id))
             node_dict[node] = Node(node, connection_list)
         return Network(node_dict)
+    
+    def find_needed_lines(self, start_Node: NodeId, end_Node: NodeId) -> Set[LineId]:
+        #create a graph of all lines connected to each other
+        line_graph:Dict[LineId, Set[LineId]] = {}
+        for node in self.nodes:
+            #if the node is a junction
+            if len(self.node_dict[node].connections) > 1:
+                connections_to_current_line = set()
+                #create a set of all lines that the current node is connected to
+                for connection in self.node_dict[node].connections:
+                    #add line as a key to the line_graph if it is not already present
+                    if connection.line_id not in line_graph:
+                        line_graph[connection.line_id] = set()
+                    connections_to_current_line.add(connection.line_id)
+                #update every key in line_graph present in the node with all other lines in the current node
+                for line in connections_to_current_line:
+                    line_graph[line].update(connections_to_current_line)
+        #remove every line from its own set
+        for key in line_graph:
+            line_graph[key].remove(key)
+        #get the lines of the start and end nodes
+        start_lines = self.node_dict[start_Node].get_connected_lines()
+        end_lines = self.node_dict[end_Node].get_connected_lines()
+        shortest_path = maxsize
+        possibles = set()
+        startend = set()
+        #find the shortest path between the start and end nodes using any combination of start/end lines
+        for start in start_lines:
+            #redoing this but like less bad and more good
+            #"MARK" is added into the queue after each depth, tracks the length of the path
+            startend.add(start)
+            for end in end_lines:
+                startend.add(end)
+                visited = set()
+                incremental_visited = set()
+                queue = []
+                queue.append(start)
+                queue.append("MARK")
+                visited.add(start)
+                length = 1
+                while queue:
+                    current_line = queue.pop(0)
+                    if current_line == "MARK":
+                        length += 1
+                        queue.append("MARK")
+                        incremental_visited = visited.copy()
+                        continue
+                    for line in line_graph[current_line]:
+                        if line == end:
+                            queue = []
+                        elif line not in visited:
+                            queue.append(line)
+                            visited.add(line)
+                if length < shortest_path:
+                    shortest_path = length
+                    possibles = incremental_visited
+                elif length == shortest_path:
+                    possibles.update(incremental_visited)
+        
+        '''
+        print(end_lines)
+        print(shortest_path)
+        '''
+        
+        possibles.update(startend)
+        return possibles
+            
+
+                
