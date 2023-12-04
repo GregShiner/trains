@@ -385,6 +385,7 @@ class Network(MultiGraph):
                     for line in line_graph[current_line]:
                         if line == end:
                             queue = []
+                            break
                         elif line not in visited:
                             queue.append(line)
                             visited.add(line)
