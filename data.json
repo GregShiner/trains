@@ -1,5 +1,7 @@
 {
-    "red": ["D", "A", "B"],
+    "red": ["D", "F", "A", "B"],
     "blue": ["F", "A", "B"],
-    "green": ["E", "A", "C", "B"]
+    "green": ["E", "A", "C", "B"],
+    "purple": ["D","J","E"],
+    "yellow":["A","C","H"]
 }
