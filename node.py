@@ -155,7 +155,7 @@ class Network(MultiGraph):
         """
         # Step 1: Get all of the raw paths
         # O(2^V) where V is the number of nodes in the graph
-        raw_paths = self._get_all_raw_paths(start, other, self.find_needed_lines(start, other))
+        raw_paths = self._get_all_raw_paths(start, other, self._find_needed_lines(start, other))
         """
         The number of raw paths in the worst case is (V-2)!e
         Where V is the number of nodes in the graph and e is euler's number (Hey that's pretty cool that e shows up here)
@@ -342,13 +342,16 @@ class Network(MultiGraph):
         else:
             # Recur for all the vertices adjacent to this vertex
             for node in self.node_dict[start].get_connected_nodes(): # O(V) because in a fully connected graph, every node is connected to every other node
-                connections_checked = 0
+                connections_checked = 0 # Keep track of how many connections have been checked
                 for connection in self.node_dict[start].connections:  # O(V) ditto
+                    # If the connection is not needed, skip it
                     if connection.line_id in needed:
                         break
                     connections_checked += 1
+                # If all of the connections have been checked, and none of them are needed, skip this node
                 if connections_checked == len(self.node_dict[start].connections):
                     continue
+                # If the node is not visited, recursively call this function with the node as the start node
                 if visited[node] == False:
                     self._get_all_raw_paths(node, end, needed, visited, paths, path) # O(V) recursive call happens V times per loop
 
@@ -357,42 +360,8 @@ class Network(MultiGraph):
         visited[start] = False
         return paths
     
-    @staticmethod
-    def from_line_file(file_name: str) -> Network:
-        """
-        Returns a Network object from a line file.
-        """
-        with open(file_name, 'r') as f:
-            line_dict: Dict[LineId,Line] = json.load(f)
-        return Network.from_line_dict(line_dict)
-    
-    @staticmethod
-    def from_line_dict(line_dict: Dict[LineId,Line]) -> Network:
-        """
-        Returns a Network object from a line dictionary.
-        """
-        node_dict: Dict[NodeId, Node] = {}
-        nodes = set()
-        line_ids = line_dict.keys()
-        lines = line_dict.values()
-        for line in lines:
-            nodes.update(line)
-        for node in nodes:
-            connection_list = []
-            for line_id in line_ids:
-                for i in range(len(line_dict[line_id])):
-                    if line_dict[line_id][i] == node:
-                        if i == 0:
-                            connection_list.append(Connection(line_dict[line_id][i+1], line_id))
-                        elif i == len(line_dict[line_id])-1:
-                            connection_list.append(Connection(line_dict[line_id][i-1], line_id))
-                        else:
-                            connection_list.append(Connection(line_dict[line_id][i-1], line_id))
-                            connection_list.append(Connection(line_dict[line_id][i+1], line_id))
-            node_dict[node] = Node(node, connection_list)
-        return Network(node_dict)
-    
-    def find_needed_lines(self, start_Node: NodeId, end_Node: NodeId) -> Set[LineId]:
+
+    def _find_needed_lines(self, start_Node: NodeId, end_Node: NodeId) -> Set[LineId]:
         """
         Finds the set of lines that might be needed to travel from the start node to the end node.
 
@@ -468,6 +437,42 @@ class Network(MultiGraph):
         
         possibles.update(startend)
         return possibles
+    
+    @staticmethod
+    def from_line_file(file_name: str) -> Network:
+        """
+        Returns a Network object from a line file.
+        """
+        with open(file_name, 'r') as f:
+            line_dict: Dict[LineId,Line] = json.load(f)
+        return Network.from_line_dict(line_dict)
+    
+    @staticmethod
+    def from_line_dict(line_dict: Dict[LineId,Line]) -> Network:
+        """
+        Returns a Network object from a line dictionary.
+        """
+        node_dict: Dict[NodeId, Node] = {}
+        nodes = set()
+        line_ids = line_dict.keys()
+        lines = line_dict.values()
+        for line in lines:
+            nodes.update(line)
+        for node in nodes:
+            connection_list = []
+            for line_id in line_ids:
+                for i in range(len(line_dict[line_id])):
+                    if line_dict[line_id][i] == node:
+                        if i == 0:
+                            connection_list.append(Connection(line_dict[line_id][i+1], line_id))
+                        elif i == len(line_dict[line_id])-1:
+                            connection_list.append(Connection(line_dict[line_id][i-1], line_id))
+                        else:
+                            connection_list.append(Connection(line_dict[line_id][i-1], line_id))
+                            connection_list.append(Connection(line_dict[line_id][i+1], line_id))
+            node_dict[node] = Node(node, connection_list)
+        return Network(node_dict)
+    
             
 
                 
