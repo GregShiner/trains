@@ -14,8 +14,8 @@ class Connection(NamedTuple):
     """
     A connection represents a connection between two nodes, including the line that the connection is on and the distance between the nodes.
     """
-    node_id: str  # node name of the connected node
-    line_id: str  # line name of the connection
+    node_id: NodeId  # node name of the connected node
+    line_id: LineId  # line name of the connection
     distance: float = 1  # distance between the nodes
 
 
