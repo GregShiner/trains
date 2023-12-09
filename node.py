@@ -144,26 +144,53 @@ class Network(MultiGraph):
         3. For each sequence tree, find the best path
             a. Stop traversing the tree if the path is longer than the best path
             b. Share the current best path between all of the trees
+        Time complexity:
+        let V be the number of nodes in the graph
+        let N be the number of raw paths (see below)
+        There are 3 complex parts to this algorithm:
+        1. Finding all of the raw paths O(2^V)
+        2. Sorting the raw paths O(V!logV)
+        3. Finding the best path O(V!*(2^V))
+        Since these happen sequentially, the total time complexity is O(V!*(2^V))
         """
         # Step 1: Get all of the raw paths
+        # O(2^V) where V is the number of nodes in the graph
         raw_paths = self._get_all_raw_paths(start, other, self.find_needed_lines(start, other))
+        """
+        The number of raw paths in the worst case is (V-2)!e
+        Where V is the number of nodes in the graph and e is euler's number (Hey that's pretty cool that e shows up here)
+        Source: https://math.stackexchange.com/questions/2406920/total-number-paths-between-two-nodes-in-a-complete-graph
+        When dealing with time complexity, we ignore constants and lower order terms
+        Therefore, the asymptotic number of raw paths is O(V!)
+        """
 
         # Sort the raw paths by length
         # This should make step 3 find more min paths faster
+        """
+        The time complexity of this sort is O(NlogN) where N is the number of raw paths
+        Substituting in the asymptotic number of raw paths, we get O(V!log(V!))
+        O(log(V!)) can be simplified using Stirling's approximation to O(VlogV)
+        Sources: https://stackoverflow.com/questions/8118221/what-is-ologn-on-and-stirlings-approximation
+            https://en.wikipedia.org/wiki/Stirling%27s_approximation
+        Substituting this back gives us O(V*V!logV)
+        This simplifies to O(V!logV)
+        While this seems like a horrendous time complexity, 
+        In practice, the number of raw paths is very small, and the sort is very fast
+        This is because our graph is far from fully connected
+        """
         raw_paths_sorted = sorted(raw_paths, key=lambda path: len(path))
-        """
-        # Step 2: Find the sequence trees
-        # Get the sequence trees
-        trees = []
-        # For each raw path
-        for raw_path in raw_paths_sorted:
-            # Get the sequence tree
-            trees.append(self._get_sequence_tree(raw_path))
-        """
+        # Initialize the min path
         min_path = Path([], float('inf'), 0, maxsize, [])
         # Step 2-3: For each sequence tree, find the best path
+        """
+        This loop runs O(N) or O(V!) times where N is the number of raw paths (see above)
+        The complexity of this loop as a whole is O(V!*(2^V+2^V))
+        This simplifies to O(V!*2^V)
+        """
         for raw_path in raw_paths_sorted:
+            # O(2^V) where V is the number of nodes in the tree
             tree = self._get_sequence_tree(raw_path)
+            # O(2^V) where V is the number of nodes in the tree
             self._get_best_path(other, tree, min_path)
         return min_path
 
@@ -176,6 +203,7 @@ class Network(MultiGraph):
             b. If the current path has the same transfers as the min path, but is longer, stop traversing the tree
             c. Else, continue traversing the tree
         2. At the end of the tree, if the current path is better than the min path, set the min path to the current path
+        Time complexity: O(2^V) where V is the number of nodes in the tree
         """
         # Initialize the path on initial call
         if not path:
@@ -203,6 +231,10 @@ class Network(MultiGraph):
         It ignores lines and transfers.
         This function returns a tree of all of the possible connections and lines for the path.
         The tree is built recursively using a tree traversal.
+        Time complexity: O(2^V) where V is the number of nodes in the graph
+        The worst case is that we have a fully connected graph, and the raw path traverses every node.
+        In this case, the for loop will run V times, and the recursive call will run V times.
+        Becaue the for loop and recursive call are nested, the time complexity is O(2^V).
         """
         # God I hate python so much
         linesVisitedCopy = linesVisited.copy()
@@ -232,9 +264,14 @@ class Network(MultiGraph):
     def _sequence_tree_to_paths(self, destination_id: NodeId, sequence_tree: Dict[Connection, dict], path: List[Connection] = [], paths: List[List[Connection]] = []) -> List[List[Connection]]:
         """
         This function takes a sequence tree and returns a list of paths.
+        Algorithm:
+        1. Recurse through the tree, keeping track of the current path
+        2. At the end of the tree, if the current path ends at the destination, add the path to the list of paths
+        Time complexity: O(2^V) where V is the number of nodes in the tree
         """
         # if the sequence tree is empty, return the paths (base case)
         if len(sequence_tree) == 0:
+            # if the path ends at the destination, add the path to the list of paths
             if path[-1].node_id == destination_id:
                 paths.append(path.copy())
             return paths
@@ -252,6 +289,11 @@ class Network(MultiGraph):
     def _transfers(self, path: List[Connection]) -> List[Transfer]:
         """
         Returns a list of transfers that must be made to follow this path.
+        Algorithm:
+        1. For each connection in the path, 
+            if the line ID of the current connection is not the same as the line ID of the next connection, 
+                add a transfer to the list of transfers
+        Time complexity: O(V) where V is the number of connections in the path
         """
         transfers = []
         # for each connection in the path
@@ -266,6 +308,20 @@ class Network(MultiGraph):
     def _get_all_raw_paths(self, start: NodeId, end: NodeId, needed: Set[LineId], visited: Dict[NodeId, bool] | None = None, paths: Set[Tuple[NodeId]] | None = None, path: List[NodeId] = []) -> Set[Tuple[NodeId]]:
         """
         Returns a list of all possible paths from start to end, ignoring lines/transfers
+        Algorithm:
+        1. Mark all the vertices as not visited
+        2. Create an empty path
+        3. Visit the start node and add it to the path
+        4. If the current node is the destination, add the path to the list of paths
+        5. Else, for each node adjacent to the current node, if the node is not visited, 
+            recursively call this function with the node as the start node
+        6. Remove the current node from the path and mark it as unvisited
+        7. Return the list of paths
+        Time complexity: O(2^V) where V is the number of nodes in the graph
+        The worst case is that we have a fully connected graph
+        The for loop will run V times, and the inside loop will run V times
+        However, the recursive call is nested inside the first for loop, and that causes the time complexity to be O(2^V)
+        This outweighs the O(V) time of the inside loop
         """
         # Mark all the vertices as not visited and determine unneeded lines on initial call 
         if visited is None:
@@ -282,19 +338,19 @@ class Network(MultiGraph):
         # If current vertex is same as destination, then add path
         if start == end:
             paths.add(tuple(path)) # type: ignore
+        # If current vertex is not destination
         else:
-            # If current vertex is not destination
             # Recur for all the vertices adjacent to this vertex
-            for node in self.node_dict[start].get_connected_nodes():
-                counter = 0
-                for connection in self.node_dict[start].connections:
+            for node in self.node_dict[start].get_connected_nodes(): # O(V) because in a fully connected graph, every node is connected to every other node
+                connections_checked = 0
+                for connection in self.node_dict[start].connections:  # O(V) ditto
                     if connection.line_id in needed:
                         break
-                    counter += 1
-                if counter == len(self.node_dict[start].connections):
+                    connections_checked += 1
+                if connections_checked == len(self.node_dict[start].connections):
                     continue
                 if visited[node] == False:
-                    self._get_all_raw_paths(node, end, needed, visited, paths, path)
+                    self._get_all_raw_paths(node, end, needed, visited, paths, path) # O(V) recursive call happens V times per loop
 
         # Remove current vertex from path[] and mark it as unvisited
         path.pop()
@@ -337,6 +393,16 @@ class Network(MultiGraph):
         return Network(node_dict)
     
     def find_needed_lines(self, start_Node: NodeId, end_Node: NodeId) -> Set[LineId]:
+        """
+        Finds the set of lines that might be needed to travel from the start node to the end node.
+
+        Args:
+            start_Node (NodeId): The ID of the start node.
+            end_Node (NodeId): The ID of the end node.
+
+        Returns:
+            Set[LineId]: The set of lines needed to travel from the start node to the end node.
+        """
         #create a graph of all lines connected to each other
         line_graph:Dict[LineId, Set[LineId]] = {}
         for node in self.nodes:
