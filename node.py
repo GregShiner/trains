@@ -52,9 +52,11 @@ class Path:
         else:
             return self.distance < __value.distance
     
+
     def __eq__(self, __value: Path) -> bool:
         return self.num_transfers == __value.num_transfers and self.distance == __value.distance
     
+
     def append(self, value: Connection) -> None:
         """
         Appends a connection to the path.
@@ -66,6 +68,7 @@ class Path:
         if len(self.path) >= 2 and value.line_id != self.path[-2].line_id:
             self.transfers.append(Transfer(self.path[-2].node_id, self.path[-2].line_id, value.line_id))
             self.num_transfers += 1
+
 
     def pop(self) -> Connection:
         """
@@ -79,6 +82,7 @@ class Path:
             self.num_transfers -= 1
         return self.path.pop()
     
+
     def set_self(self, value: Path) -> None:
         """
         Sets this path to the value of another path.
@@ -91,9 +95,8 @@ class Path:
         self.transfers = value.transfers.copy()
 
 
-
 class Node:
-    node_id: str  # node name
+    node_id: NodeId  # node name
     connections: List[Connection]  # list of connections
 
 
@@ -102,24 +105,36 @@ class Node:
         self.connections = connections
 
 
-    def get_nodes_on_line(self, line_id: LineId) -> List[NodeId]:
-        return [c.node_id for c in self.connections if c.line_id == line_id]
-
-
     def get_connected_nodes(self) -> List[NodeId]:
+        """
+        Gets a list of all of the nodes that this node is connected to.
+        """
+        # the list comprehension gets the node_id of every connection in the list of connections
+        # the set() removes duplicates (some nodes are connected to each other multiple times if they share multiple lines)
+        # it is then converted back to a list
         return list(set([c.node_id for c in self.connections]))
 
 
     def get_connected_lines(self) -> List[LineId]:
+        """
+        Gets a list of all of the lines that this node is connected to.
+        """
+        # the list comprehension gets the line_id of every connection in the list of connections
         return [c.line_id for c in self.connections]
     
     
     def __repr__(self):
+        """
+        Debugging representation of the node.
+        """
         return f'Node {self.node_id} with connections {self.connections}'
     
 
 class Network(MultiGraph):
-    node_dict: Dict[NodeId, Node]
+    """
+    A network represents a graph of stations and connections between them.
+    """
+    node_dict: Dict[NodeId, Node] # Mapping of node IDs to node objects
 
     
     def __init__(self, node_dict: Dict[NodeId, Node]):
@@ -236,7 +251,6 @@ class Network(MultiGraph):
         In this case, the for loop will run V times, and the recursive call will run V times.
         Becaue the for loop and recursive call are nested, the time complexity is O(2^V).
         """
-        # God I hate python so much
         linesVisitedCopy = linesVisited.copy()
         # Sets the tree to an empty dict on initial call
         if tree is None:
@@ -430,11 +444,6 @@ class Network(MultiGraph):
                 elif length == shortest_path:
                     possibles.update(incremental_visited)
         
-        '''
-        print(end_lines)
-        print(shortest_path)
-        '''
-        
         possibles.update(startend)
         return possibles
     
@@ -443,6 +452,7 @@ class Network(MultiGraph):
         """
         Returns a Network object from a line file.
         """
+        # The json file is a dictionary of line IDs to lines (lists of node IDs)
         with open(file_name, 'r') as f:
             line_dict: Dict[LineId,Line] = json.load(f)
         return Network.from_line_dict(line_dict)
@@ -450,29 +460,36 @@ class Network(MultiGraph):
     @staticmethod
     def from_line_dict(line_dict: Dict[LineId,Line]) -> Network:
         """
-        Returns a Network object from a line dictionary.
+        Builds a Network object from a line dictionary.
         """
-        node_dict: Dict[NodeId, Node] = {}
-        nodes = set()
-        line_ids = line_dict.keys()
-        lines = line_dict.values()
+        node_dict: Dict[NodeId, Node] = {} # Mapping of node IDs to node objects
+        nodes = set() # Set of all nodes
+        line_ids = line_dict.keys() # Set of all line IDs
+        lines = line_dict.values() # Set of all lines
+        # Add all of the nodes to the set of nodes
         for line in lines:
             nodes.update(line)
+        # Create a dictionary of nodes
+        # Each node is mapped to a list of connections
         for node in nodes:
+            # Reset the connection list for each node
             connection_list = []
+            # For each line, if the node is on the line, add the node's connections to the connection list
             for line_id in line_ids:
+                # for each node on the line
                 for i in range(len(line_dict[line_id])):
+                    # if the node is on the line
                     if line_dict[line_id][i] == node:
+                        # if the node is the first node on the line, add the next node to the connection list
                         if i == 0:
                             connection_list.append(Connection(line_dict[line_id][i+1], line_id))
+                        # if the node is the last node on the line, add the previous node to the connection list
                         elif i == len(line_dict[line_id])-1:
                             connection_list.append(Connection(line_dict[line_id][i-1], line_id))
+                        # otherwise, add the previous and next nodes to the connection list
                         else:
                             connection_list.append(Connection(line_dict[line_id][i-1], line_id))
                             connection_list.append(Connection(line_dict[line_id][i+1], line_id))
+            # Add the node to the node dictionary
             node_dict[node] = Node(node, connection_list)
         return Network(node_dict)
-    
-            
-
-                
