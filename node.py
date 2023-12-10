@@ -53,7 +53,7 @@ class Network:
         self.node_dict = node_dict
         self.line_dict = line_dict
 
-    def route_to(self, start: NodeId, other: NodeId) -> Path:
+    def route_to(self, start: NodeId, other: NodeId) -> Path:#type: ignore
         """
         Returns a path of connections that will take you from this node to the other node
         Algorithm:
