@@ -1,30 +1,47 @@
-from typing import Dict, List
-from node import Node, Connection, NodeId, LineId, Line
-import tkinter as tk
+from node import Network
+from argparse import ArgumentParser
+from iterfzf import iterfzf
+from os.path import isfile
+import ui
 
-NODE_DICT: Dict[NodeId, Node] = {
-    'A': Node('A', [Connection('B', 'red'), 
-                Connection('B', 'blue'),
-                Connection('C', 'green'),
-                Connection('D', 'red'),
-                Connection('E', 'green'),
-                Connection('F', 'blue'),]),
-    'B': Node('B', [Connection('A', 'red'),
-                Connection('A', 'blue'),
-                Connection('C', 'green'),]),
-    'C': Node('C', [Connection('A', 'green'),
-                Connection('B', 'green'),]),
-    'D': Node('D', [Connection('A', 'red'),]),
-    'E': Node('E', [Connection('A', 'green'),]),
-    'F': Node('F', [Connection('A', 'blue'),]),
-}
+parser = ArgumentParser()
+parser.add_argument('-s', "--start", action='store')
+parser.add_argument('-e', "--end", action='store')
+parser.add_argument('-i', '--input', action='store', default='manhattan.json')
 
-LINE_DICT: Dict[LineId, Line] = {
-    'red': ['D', 'A', 'B',],
-    'blue': ['F', 'A', 'B'],
-    'green': ['E', 'A', 'C', 'B'],
-}
+args = parser.parse_args()
+if not isfile(args.input):
+    print(f"File does not exist: {args.input}")
+    exit(2)
+
+network = Network.from_line_file(args.input)
+nodes = network.node_dict.keys()
+
+if args.start:
+    if args.start not in nodes:
+        print(f"Invalid station name: {args.start}")
+        exit(1)
+
+    start_station = args.start
+
+else:
+    start_station = iterfzf(nodes, prompt='Start station: ')
 
 
-def get_node(node_name: str) -> Node:
-    return NODE_DICT[node_name]
+if args.end:
+    if args.end not in nodes:
+        print(f"Invalid station name: {args.end}")
+        exit(1)
+
+    end_station = args.end
+
+else:
+    end_station = iterfzf(nodes, prompt='End station: ')
+
+print(f'Start station: {start_station}')
+print(f'End station: {end_station}')
+
+user_path = network.route_to(start_station, end_station) # type: ignore
+
+ui.display_path(start_station, user_path)  # type: ignore
+

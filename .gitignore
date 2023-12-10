@@ -162,3 +162,7 @@ cython_debug/
 bin/
 lib64
 pyenv.cfg
+share
+
+#VSCode settings
+.vscode/
