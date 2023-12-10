@@ -1,28 +1,47 @@
 from node import Network
-import ui
+from argparse import ArgumentParser
 from iterfzf import iterfzf
+from os.path import isfile
+import ui
 
-network = Network.from_line_file("manhattan.json")
-"""
-for node in network.nodes:
-    print(node)
-    for connection in network.node_dict[node].connections:
-        print(f'\t{connection.node_id} on line {connection.line_id}')
+parser = ArgumentParser()
+parser.add_argument('-s', "--start", action='store')
+parser.add_argument('-e', "--end", action='store')
+parser.add_argument('-i', '--input', action='store', default='manhattan.json')
 
-for edge in network.edges:
-    print(edge)
-"""
+args = parser.parse_args()
+if not isfile(args.input):
+    print(f"File does not exist: {args.input}")
+    exit(2)
+
+network = Network.from_line_file(args.input)
 nodes = network.node_dict.keys()
-start_node = iterfzf(nodes, multi=False, prompt='Start station: ')
-end_node = iterfzf(nodes, multi=False, prompt='End station: ')
-print(f'Start station: {start_node}')
-print(f'End station: {end_node}')
 
-#user_stations = ui.prompt_for_stations()
-#user_stations = ('215th Street (1)', '57th Street (M)')
+if args.start:
+    if args.start not in nodes:
+        print(f"Invalid station name: {args.start}")
+        exit(1)
 
-user_path = network.route_to(start_node, end_node) # type: ignore
-#user_path = network.route_to(*user_stations)
+    start_station = args.start
 
-ui.display_path(start_node, user_path) # type: ignore
-#ui.display_path(user_stations[0], user_path)
+else:
+    start_station = iterfzf(nodes, prompt='Start station: ')
+
+
+if args.end:
+    if args.end not in nodes:
+        print(f"Invalid station name: {args.end}")
+        exit(1)
+
+    end_station = args.end
+
+else:
+    end_station = iterfzf(nodes, prompt='End station: ')
+
+print(f'Start station: {start_station}')
+print(f'End station: {end_station}')
+
+user_path = network.route_to(start_station, end_station) # type: ignore
+
+ui.display_path(start_station, user_path)  # type: ignore
+
