@@ -50,6 +50,7 @@ Run the program with the following command:
 ```sh
 python main.py
 ```
+## Specifying Start and End Stations from the CLI
 Running the program with no command line arguments will result in the user being prompted to select the start and end stations using fuzzy search. Start and end stations can be defined with the following command line arguments:
 ```sh
 # Select only start station (end station will be prompted with fuzzy search)
@@ -59,4 +60,9 @@ python main.py --end "<end station name>"
 # Select both start and end station
 python main.py --start "<start station name>" --end "<end station name>"
 ```
-If a station name provided as a command line argument does not exist, the program will exit early.
+## Specifying input file
+The default subway layout file is the manhattan.json file. If you would like to use a different one (such as the small_example.json file provided) you can use the --input command line argument
+```sh
+python main.py --input small_example.json
+```
+If a station name(s) or the input file provided as command line arguments do not exist, the program will exit early.
