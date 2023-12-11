@@ -385,6 +385,16 @@ class Network(MultiGraph):
 
         Returns:
             Set[LineId]: The set of lines needed to travel from the start node to the end node.
+
+        Time complexity: split into two parts, the creation of the line graph and performing BFS on it
+
+        Graph generation complexity: Worst case O(V^2*L) where V is the number of nodes in the graph and L is the number of lines
+        Worst case is a complete graph where all lines run through all nodes
+        
+        BFS complexity: O(L + V) where L is the number of lines and V is the number of nodes in the graph
+        Worst case for BFS is known as it is a common algorithm, and our modifications do not affect the time complexity
+
+        Overall time complexity: O(V^2*L + L + V) = O(V^2*L)
         """
         #create a graph of all lines connected to each other
         line_graph:Dict[LineId, Set[LineId]] = {}
