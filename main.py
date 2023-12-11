@@ -38,6 +38,10 @@ if args.end:
 else:
     end_station = iterfzf(nodes, prompt='End station: ')
 
+if start_station == end_station:
+    print('Start and end stations cannot be the same')
+    exit(1)
+
 print(f'Start station: {start_station}')
 print(f'End station: {end_station}')
 
